@@ -119,9 +119,22 @@ const versions = [
   }
 ];
 
+versions.forEach((version) => {
+  version.leveled = version.courses.some((course) => course.pages.some((item) => item.levels));
+});
+
+const levels = [
+  { id: "easy", label: "簡單" },
+  { id: "medium", label: "中等" },
+  { id: "hard", label: "困難" }
+];
+const levelStorageKey = "glyphMeaningLevel";
+const levelViews = new WeakMap();
+
 const storageKey = "glyphMeaningScoresV2";
 const state = {
   versionId: null,
+  level: loadLevel(),
   courseIndex: 0,
   page: 0,
   placements: [],
@@ -141,6 +154,7 @@ const els = {
   selectedVersion: document.getElementById("selectedVersion"),
   sourceNote: document.getElementById("sourceNote"),
   lessonGrid: document.getElementById("lessonGrid"),
+  difficultyPicker: document.getElementById("difficultyPicker"),
   courseTitle: document.getElementById("courseTitle"),
   pageNow: document.getElementById("pageNow"),
   pageTotal: document.getElementById("pageTotal"),
@@ -178,6 +192,7 @@ function init() {
     history.replaceState(null, "", window.location.pathname);
   }
   const versionId = params.get("version");
+  if (levels.some((level) => level.id === params.get("level"))) state.level = params.get("level");
   const courseId = params.has("course") ? Number(params.get("course")) : null;
   const legacyPage = params.has("page") ? Number(params.get("page")) : null;
   if (Number.isInteger(courseId)) {
@@ -225,11 +240,13 @@ function selectVersion(versionId) {
 }
 
 function renderHome() {
+  renderDifficultyPicker();
   const versionScores = scoresForCurrentVersion();
   els.lessonGrid.innerHTML = currentCourses()
     .map((course) => {
-      const score = versionScores[course.id];
-      const scoreText = Number.isFinite(score) ? `${score}分` : "尚未測驗";
+      const score = versionScores[scoreKey(course)];
+      const unleveled = isLeveled() && !courseIsLeveled(course);
+      const scoreText = Number.isFinite(score) ? `${score}分` : unleveled ? "未分級" : "尚未測驗";
       return `<button class="lesson-button" type="button" data-course="${course.id}"><strong>${course.label}</strong><span class="lesson-score">${scoreText}</span></button>`;
     })
     .join("");
@@ -237,6 +254,40 @@ function renderHome() {
   els.lessonGrid.querySelectorAll(".lesson-button").forEach((button) => {
     button.addEventListener("click", () => startCourse(Number(button.dataset.course), 0));
   });
+}
+
+function renderDifficultyPicker() {
+  els.difficultyPicker.classList.toggle("hidden", !isLeveled());
+  els.difficultyPicker.innerHTML = levels
+    .map((level) => `<button type="button" data-level="${level.id}" aria-pressed="${level.id === state.level}">${level.label}</button>`)
+    .join("");
+  els.difficultyPicker.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.level = button.dataset.level;
+      saveLevel();
+      renderHome();
+    });
+  });
+}
+
+function isLeveled() {
+  return Boolean(versions.find((version) => version.id === state.versionId)?.leveled);
+}
+
+function courseIsLeveled(course) {
+  return course.pages.some((item) => item.levels);
+}
+
+function levelLabel() {
+  return levels.find((level) => level.id === state.level).label;
+}
+
+function courseLabel(course) {
+  return courseIsLeveled(course) ? `${course.label}・${levelLabel()}` : course.label;
+}
+
+function scoreKey(course) {
+  return courseIsLeveled(course) ? `${course.id}-${state.level}` : course.id;
 }
 
 function startCourse(courseId, pageIndex = 0) {
@@ -250,7 +301,7 @@ function startCourse(courseId, pageIndex = 0) {
   els.versionScreen.classList.add("hidden");
   els.homeScreen.classList.add("hidden");
   els.gameScreen.classList.remove("hidden");
-  els.courseTitle.textContent = course.label;
+  els.courseTitle.textContent = courseLabel(course);
   els.pageTotal.textContent = String(course.pages.length);
   updateMistakeCount();
   loadPage(state.page);
@@ -283,7 +334,28 @@ function currentCourses() {
 }
 
 function currentPage() {
-  return currentCourse().pages[state.page];
+  return pageAt(state.page);
+}
+
+function pageAt(pageIndex) {
+  const item = currentCourse().pages[pageIndex];
+  return item.levels ? levelView(item, state.level) : item;
+}
+
+// A leveled page stores one [字, 句前, 語詞, 句後] entry per blank for each difficulty.
+function levelView(item, level) {
+  if (!levelViews.has(item)) levelViews.set(item, {});
+  const cache = levelViews.get(item);
+  if (!cache[level]) {
+    const sentences = item.levels[level].map(([char, before, word, after]) => ({ char, before, word, after }));
+    const answers = sentences.map((sentence) => sentence.word);
+    const pairs = item.title.split(" / ").map((char) => {
+      const words = sentences.filter((sentence) => sentence.char === char).map((sentence) => sentence.word);
+      return `${char}：${words.join("、")}`;
+    });
+    cache[level] = { title: item.title, pairs, sentences, answers, tiles: shuffle([...answers], `${item.title}${level}`) };
+  }
+  return cache[level];
 }
 
 function loadPage(pageIndex) {
@@ -307,17 +379,25 @@ function loadPage(pageIndex) {
 
 function renderStory() {
   const lesson = currentPage();
-  let answerIndex = 0;
-  const parts = lesson.story.map((part, index) => {
-    if (index % 2 === 0) return escapeHtml(part);
-    const placed = state.placements[answerIndex];
+  const blank = (slot) => {
+    const placed = state.placements[slot];
     const classNames = ["blank"];
     if (placed) classNames.push("filled");
-    const html = `<button class="${classNames.join(" ")}" data-slot="${answerIndex}" type="button">${placed ? escapeHtml(placed) : ""}</button>`;
-    answerIndex += 1;
-    return html;
-  });
-  els.storyCard.innerHTML = `<p>${parts.join("")}</p>`;
+    return `<button class="${classNames.join(" ")}" data-slot="${slot}" type="button">${placed ? escapeHtml(placed) : ""}</button>`;
+  };
+  if (lesson.sentences) {
+    const items = lesson.sentences.map((sentence, slot) => `<li>${escapeHtml(sentence.before)}${blank(slot)}${escapeHtml(sentence.after)}</li>`);
+    els.storyCard.innerHTML = `<ol class="sentence-list">${items.join("")}</ol>`;
+  } else {
+    let answerIndex = 0;
+    const parts = lesson.story.map((part, index) => {
+      if (index % 2 === 0) return escapeHtml(part);
+      const html = blank(answerIndex);
+      answerIndex += 1;
+      return html;
+    });
+    els.storyCard.innerHTML = `<p>${parts.join("")}</p>`;
+  }
   els.storyCard.querySelectorAll(".blank").forEach((blank) => blank.addEventListener("click", onBlankClick));
 }
 
@@ -463,9 +543,9 @@ function finishCourse() {
   const course = currentCourse();
   const score = Math.max(0, 100 - state.mistakes.size * 3);
   if (!state.scores[state.versionId]) state.scores[state.versionId] = {};
-  state.scores[state.versionId][course.id] = score;
+  state.scores[state.versionId][scoreKey(course)] = score;
   saveScores();
-  els.scoreCourse.textContent = course.label;
+  els.scoreCourse.textContent = courseLabel(course);
   els.scoreValue.textContent = `${score}分`;
   els.scoreOverlay.classList.remove("show");
   void els.scoreOverlay.offsetWidth;
@@ -513,18 +593,23 @@ function printMistakes() {
   const sections = [...byPage.entries()]
     .sort((a, b) => a[0] - b[0])
     .map(([pageIndex, wrongSlots]) => {
-      const lesson = course.pages[pageIndex];
+      const lesson = pageAt(pageIndex);
+      const word = (text, slot) => `<span${wrongSlots.has(slot) ? " class=\"print-wrong\"" : ""}>${escapeHtml(text)}</span>`;
+      const heading = `<h2>${escapeHtml(courseLabel(course))} ${escapeHtml(lesson.title)}</h2>`;
+      if (lesson.sentences) {
+        const items = lesson.sentences.map((sentence, slot) => `<li>${escapeHtml(sentence.before)}${word(sentence.word, slot)}${escapeHtml(sentence.after)}</li>`);
+        return `<section>${heading}<ol>${items.join("")}</ol></section>`;
+      }
       let answerIndex = 0;
       const story = lesson.story
         .map((part, index) => {
           if (index % 2 === 0) return escapeHtml(part);
-          const className = wrongSlots.has(answerIndex) ? " class=\"print-wrong\"" : "";
-          const html = `<span${className}>${escapeHtml(part)}</span>`;
+          const html = word(part, answerIndex);
           answerIndex += 1;
           return html;
         })
         .join("");
-      return `<section><h2>${escapeHtml(course.label)} ${escapeHtml(lesson.title)}</h2><p>${story}</p></section>`;
+      return `<section>${heading}<p>${story}</p></section>`;
     })
     .join("");
 
@@ -565,6 +650,21 @@ function loadScores() {
   } catch {
     return {};
   }
+}
+
+function loadLevel() {
+  try {
+    const saved = localStorage.getItem(levelStorageKey);
+    return levels.some((level) => level.id === saved) ? saved : "easy";
+  } catch {
+    return "easy";
+  }
+}
+
+function saveLevel() {
+  try {
+    localStorage.setItem(levelStorageKey, state.level);
+  } catch {}
 }
 
 function scoresForCurrentVersion() {

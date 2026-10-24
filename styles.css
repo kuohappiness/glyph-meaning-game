@@ -160,6 +160,31 @@ button {
   font-weight: 700;
 }
 
+.difficulty-picker {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: -8px auto 24px;
+}
+
+.difficulty-picker button {
+  min-width: 96px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 231, 154, 0.68);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.difficulty-picker button[aria-pressed="true"] {
+  background: #ffe79a;
+  color: #26364a;
+}
+
 .lesson-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -363,6 +388,15 @@ h2 {
 
 .story-card p {
   margin: 0;
+}
+
+.sentence-list {
+  margin: 0;
+  padding-left: 1.6em;
+}
+
+.sentence-list li + li {
+  margin-top: 0.35em;
 }
 
 .blank {
@@ -726,7 +760,8 @@ h2 {
     margin: 18px 0 8px;
   }
 
-  .print-report p {
+  .print-report p,
+  .print-report li {
     font-size: 15px;
     line-height: 1.9;
     margin: 0 0 10px;
