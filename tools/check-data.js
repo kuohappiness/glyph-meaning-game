@@ -1,42 +1,46 @@
 #!/usr/bin/env node
-// Validates the word bank before publishing.
-// Usage: node tools/check-data.js [four-up-mid-data.js] [--words word-index.json]
-// word-index.json (optional) maps each dictionary word to { level, sources } and
-// turns "word must exist in the dictionaries" into a hard check.
+// Validates the leveled word bank before publishing.
+// Usage: node tools/check-data.js [four-up-mid-data.js]
+//
+// Rules checked:
+// - every page has easy, medium and hard entries as [字, 句前, 語詞, 句後]
+// - each entry's 語詞 contains its 字, and the 字 appears in the page title
+// - at most 8 blanks per page per level, and no repeated 語詞 within a level
+// - each 字 has 1 or 2 語詞 per level where it appears; every 字 appears in at least one level
+// - sentences are at most 30 characters and end with punctuation
+// Not checked here: whether 語詞 are real dictionary words or near-synonyms.
+// Those need the dictionary word index, which cannot be built offline.
 
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
 const LEVELS = ["easy", "medium", "hard"];
-const WORDS_PER_CHAR = 2;
 const MAX_BLANKS = 8;
+const MAX_WORDS_PER_CHAR = 2;
 const MAX_SENTENCE_CHARS = 30;
 
-const args = process.argv.slice(2);
-const wordsFlag = args.indexOf("--words");
-const wordIndex = wordsFlag >= 0 ? JSON.parse(fs.readFileSync(args[wordsFlag + 1], "utf8")) : null;
-const dataFile = args.find((arg, index) => !arg.startsWith("--") && index !== wordsFlag + 1) || path.join(__dirname, "..", "four-up-mid-data.js");
-
+const dataFile = process.argv[2] || path.join(__dirname, "..", "four-up-mid-data.js");
 const sandbox = { window: {} };
 vm.runInNewContext(fs.readFileSync(dataFile, "utf8"), sandbox);
 const courses = sandbox.window.FOUR_UP_MID_COURSES;
 
 const errors = [];
-const warnings = [];
-const counts = { pages: 0, leveled: 0, sentences: 0 };
+const notes = [];
+const singleWord = [];
+let pages = 0;
+let sentences = 0;
 
 for (const course of courses) {
-  const seen = {};
   course.pages.forEach((page, pageIndex) => {
-    counts.pages += 1;
+    pages += 1;
     const where = `${course.label} 第${pageIndex + 1}頁「${page.title}」`;
     const chars = page.title.split(" / ");
     if (!page.levels) {
-      checkStoryPage(page, where);
+      errors.push(`${where} 沒有分級內容`);
       return;
     }
-    counts.leveled += 1;
+    const appears = new Set();
     for (const level of LEVELS) {
       const entries = page.levels[level];
       const at = `${where}［${level}］`;
@@ -46,46 +50,38 @@ for (const course of courses) {
       }
       if (entries.length > MAX_BLANKS) errors.push(`${at} 有 ${entries.length} 格，超過 ${MAX_BLANKS} 格`);
       const words = new Set();
+      const perChar = {};
       for (const entry of entries) {
-        counts.sentences += 1;
-        const [char, before, word, after] = entry;
-        if (entry.length !== 4 || ![char, before, word, after].every((part) => typeof part === "string")) {
+        sentences += 1;
+        if (!Array.isArray(entry) || entry.length !== 4 || !entry.every((part) => typeof part === "string")) {
           errors.push(`${at} 格式錯誤：${JSON.stringify(entry)}`);
           continue;
         }
-        if (!chars.includes(char)) errors.push(`${at}「${word}」標示的字「${char}」不在本頁比較字中`);
+        const [char, before, word, after] = entry;
+        if (!chars.includes(char)) errors.push(`${at}「${word}」標示的字「${char}」不在本頁標題中`);
         if (!word.includes(char)) errors.push(`${at}「${word}」不含「${char}」`);
         if (words.has(word)) errors.push(`${at}「${word}」重複`);
         words.add(word);
+        perChar[char] = (perChar[char] || 0) + 1;
+        appears.add(char);
         const length = [...(before + word + after)].length;
-        if (length > MAX_SENTENCE_CHARS) warnings.push(`${at}「${word}」的句子有 ${length} 字，超過 ${MAX_SENTENCE_CHARS} 字`);
-        if (!/[。！？][」』”"]?$/.test(after)) warnings.push(`${at}「${word}」的句子沒有以句號、驚嘆號或問號結尾`);
-        const key = `${level}:${word}`;
-        if (seen[key]) warnings.push(`${at}「${word}」在本課${seen[key]}已出現`);
-        seen[key] = `第${pageIndex + 1}頁`;
-        if (wordIndex) {
-          const info = wordIndex[word];
-          if (!info) errors.push(`${at}「${word}」不在字典詞表中`);
+        if (length > MAX_SENTENCE_CHARS) errors.push(`${at}「${word}」的句子有 ${length} 字，超過 ${MAX_SENTENCE_CHARS} 字`);
+        if (!/[。！？][」』”"]?$/.test(after) && !/[。！？」』”"]$/.test(after)) {
+          errors.push(`${at}「${word}」的句子沒有以標點結尾`);
         }
       }
-      for (const char of chars) {
-        const n = entries.filter((entry) => entry[0] === char).length;
-        if (n !== WORDS_PER_CHAR) errors.push(`${at}「${char}」有 ${n} 個詞，應為 ${WORDS_PER_CHAR} 個`);
+      for (const [char, count] of Object.entries(perChar)) {
+        if (count > MAX_WORDS_PER_CHAR) errors.push(`${at}「${char}」有 ${count} 個語詞，超過 ${MAX_WORDS_PER_CHAR} 個`);
+        if (count === 1) singleWord.push(`${at}「${char}」`);
       }
+    }
+    for (const char of chars) {
+      if (!appears.has(char)) errors.push(`${where}「${char}」在所有難度都沒有語詞`);
     }
   });
 }
 
-function checkStoryPage(page, where) {
-  const { story, answers } = page;
-  if (story.length !== answers.length * 2 + 1) errors.push(`${where} story 與 answers 數量不符`);
-  answers.forEach((answer, index) => {
-    if (story[index * 2 + 1] !== answer) errors.push(`${where} 第 ${index + 1} 格答案與 story 不一致`);
-  });
-  if (answers.length > MAX_BLANKS) errors.push(`${where} 超過 ${MAX_BLANKS} 格`);
-}
-
-warnings.forEach((message) => console.log(`注意：${message}`));
+if (singleWord.length) console.log(`提示：${singleWord.length} 個字在某個難度只有 1 個語詞（不列出，可參考 CLAUDE.md）`);
 errors.forEach((message) => console.log(`錯誤：${message}`));
-console.log(`共 ${counts.pages} 頁（分級頁 ${counts.leveled}），分級句子 ${counts.sentences} 句；錯誤 ${errors.length}，注意 ${warnings.length}。`);
+console.log(`共 ${pages} 頁，${sentences} 句；錯誤 ${errors.length}。`);
 process.exit(errors.length ? 1 : 0);

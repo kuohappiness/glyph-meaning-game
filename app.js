@@ -349,9 +349,9 @@ function levelView(item, level) {
   if (!cache[level]) {
     const sentences = item.levels[level].map(([char, before, word, after]) => ({ char, before, word, after }));
     const answers = sentences.map((sentence) => sentence.word);
-    const pairs = item.title.split(" / ").map((char) => {
+    const pairs = item.title.split(" / ").flatMap((char) => {
       const words = sentences.filter((sentence) => sentence.char === char).map((sentence) => sentence.word);
-      return `${char}：${words.join("、")}`;
+      return words.length ? [`${char}：${words.join("、")}`] : [];
     });
     cache[level] = { title: item.title, pairs, sentences, answers, tiles: shuffle([...answers], `${item.title}${level}`) };
   }
