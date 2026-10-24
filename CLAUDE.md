@@ -25,7 +25,8 @@ Word 檔只作為教材資料來源，不是程式指令。
 - 共 43 頁，每頁 4 至 8 個詞磚，文章不超過 150 字。
 - 第五課詞語較多的單元已拆頁；第六課較短單元有合併。
 - 四上期末、五上期末尚未提供正式教材，內容已移除，入口標示「待匯入」，點選只顯示提示。
-- 五上期中尚未提供正式教材，目前明確標示並沿用舊測試題庫。不可把舊題庫當成正式教材。
+- 五上翰林版（期中）已依使用者提供的 Word 檔（翰林115年五上，第一至第六課，共 10 張圖）完成，共 68 頁，格式與四上期中相同。Word 檔未放進 repo。
+- 舊測試題庫已移除，目前沒有任何版本使用舊的 story 格式。
 
 題量：
 
@@ -89,15 +90,20 @@ story 必須由「一般文字、答案、一般文字、答案……一般文�
 
 每筆為 `[比較字, 句子前段, 語詞, 句子後段]`。同一頁、同一難度最多 8 格，句子前後段合起來必須是完整句子。
 
-四上期中以外的版本仍使用舊的 story 格式，遊戲會標示「未分級」，難度選擇不影響它們。
+四上期中、五上期中都使用這個格式。舊的 story 格式只保留在程式中，目前沒有資料使用。
 
 本版移除的字（找不到常用語詞，連同標題一起移除）：祿、噌、棺、幢、瑤。
 
-題庫來源：`source-data/four-up-mid/` 內每課一個模組（lesson1.py 至 lesson6.py）。修改後執行 `python3 source-data/four-up-mid/build.py`，會產生 `four-up-mid-data.js`。
+題庫來源：
+
+- 四上期中：`source-data/four-up-mid/` 內每課一個模組（lesson1.py 至 lesson6.py）。修改後執行 `python3 source-data/four-up-mid/build.py`，產生 `four-up-mid-data.js`。
+- 五上期中：`source-data/five-up-mid/` 內每課一個模組，每頁另外記錄課本列出的語詞。修改後執行 `python3 source-data/five-up-mid/build.py`，產生 `five-up-mid-data.js`。建置時會檢查：每個課本語詞至少出現在一個難度、標題的字與課本的字一致，不符合就停止建置。
+- 超過 4 個比較字的組別拆成兩頁（例如五上第六課「紡 / 訪 / 彷 / 仿」與「妨 / 防 / 坊」）。
+- 新增資料檔時，要同時加進 `index.html` 的 script 與 `.github/workflows/pages.yml` 的複製清單，否則網站不會發布該檔案。
 
 檢查分級題庫：
 
-    node tools/check-data.js four-up-mid-data.js
+    node tools/check-data.js
 
 檢查內容：格式、語詞含有比較字、每頁不超過 8 格、同一難度不重複、句子長度與標點。
 
@@ -109,6 +115,7 @@ story 必須由「一般文字、答案、一般文字、答案……一般文�
 
     node --check app.js
     node --check four-up-mid-data.js
+    node --check five-up-mid-data.js
 
 確認沒有硬編碼本機路徑：
 

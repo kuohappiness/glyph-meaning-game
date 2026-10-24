@@ -31,7 +31,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir _site
-          cp index.html styles.css app.js four-up-mid-data.js .nojekyll _site/
+          cp index.html styles.css app.js four-up-mid-data.js five-up-mid-data.js .nojekyll _site/
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Validates the leveled word bank before publishing.
-// Usage: node tools/check-data.js [four-up-mid-data.js]
+// Usage: node tools/check-data.js [data file ...]   (default: four-up-mid-data.js and five-up-mid-data.js)
 //
 // Rules checked:
 // - every page has easy, medium and hard entries as [字, 句前, 語詞, 句後]
@@ -20,10 +20,17 @@ const MAX_BLANKS = 8;
 const MAX_WORDS_PER_CHAR = 2;
 const MAX_SENTENCE_CHARS = 30;
 
-const dataFile = process.argv[2] || path.join(__dirname, "..", "four-up-mid-data.js");
-const sandbox = { window: {} };
-vm.runInNewContext(fs.readFileSync(dataFile, "utf8"), sandbox);
-const courses = sandbox.window.FOUR_UP_MID_COURSES;
+const dataFiles = process.argv.length > 2
+  ? process.argv.slice(2)
+  : ["four-up-mid-data.js", "five-up-mid-data.js"].map((name) => path.join(__dirname, "..", name));
+const courses = dataFiles.flatMap((file) => {
+  const sandbox = { window: {} };
+  vm.runInNewContext(fs.readFileSync(file, "utf8"), sandbox);
+  const name = path.basename(file, ".js");
+  return Object.entries(sandbox.window)
+    .filter(([key]) => key.endsWith("_COURSES"))
+    .flatMap(([, list]) => list.map((course) => ({ ...course, label: `${name} ${course.label}` })));
+});
 
 const errors = [];
 const notes = [];
