@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>字形辨義</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section class="version-screen" id="versionScreen">
+      <div class="version-stage">
+        <p class="home-kicker">漢字挑戰</p>
+        <h1 class="version-title">字形辨義</h1>
+        <p class="version-lead">選擇年級與測驗範圍</p>
+        <div class="version-grid" id="versionGrid"></div>
+      </div>
+    </section>
+
+    <section class="home-screen hidden" id="homeScreen">
+      <div class="home-stage">
+        <p class="home-kicker">漢字挑戰</p>
+        <h1 class="home-title">字形辨義</h1>
+        <h2 class="selected-version" id="selectedVersion"></h2>
+        <div class="home-rule">看清字形，選對詞語，完成短文。</div>
+        <div class="lesson-grid" id="lessonGrid"></div>
+        <div class="home-footer">
+          <button class="version-back" id="backVersions" type="button">選擇其他版本</button>
+          <p class="source-note" id="sourceNote">出處：翰林114年三下國語（既有測試題庫）</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="app hidden" id="gameScreen">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">字形辨義</p>
+          <h1 id="courseTitle">第七課</h1>
+        </div>
+        <div class="stats" aria-live="polite">
+          <div class="progress-dots" id="progressDots" aria-label="作答狀態"></div>
+          <span><b id="pageNow">1</b>/<b id="pageTotal">7</b></span>
+          <span>錯題 <b id="mistakeCount">0</b></span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="lesson-head">
+          <div>
+            <p class="unit" id="unitLabel"></p>
+            <h2 id="lessonTitle"></h2>
+          </div>
+          <div class="pair-list" id="pairList"></div>
+        </section>
+
+        <section class="story-card" id="storyCard" aria-label="填空短文"></section>
+
+        <section class="word-bank" aria-label="詞語磚">
+          <div class="bank-head">
+            <span>詞語</span>
+            <button class="small-button" id="resetPage" type="button">重填本頁</button>
+          </div>
+          <div class="tiles" id="tiles"></div>
+        </section>
+      </main>
+
+      <footer class="actionbar">
+        <button class="ghost" id="backHome" type="button">回首頁</button>
+        <button class="ghost" id="prevPage" type="button">上一頁</button>
+        <button class="ghost" id="nextPage" type="button">下一頁</button>
+        <button class="primary" id="submitPage" type="button">送出</button>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="like-overlay" id="likeOverlay" aria-hidden="true">
+      <div class="like-mark">讚</div>
+    </div>
+    <div class="score-overlay" id="scoreOverlay" aria-hidden="true">
+      <div class="score-card">
+        <p id="scoreCourse">第七課</p>
+        <strong id="scoreValue">100分</strong>
+        <div class="score-actions">
+          <button class="ghost" id="scorePrint" type="button">輸出 PDF 檔</button>
+          <button class="primary" id="scoreHome" type="button">回首頁</button>
+        </div>
+      </div>
+    </div>
+    <div id="printReport" class="print-report"></div>
+
+    <script src="four-up-mid-data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
