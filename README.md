@@ -42,6 +42,8 @@ http://127.0.0.1:5173/glyph-meaning-game/index.html
 
 之後每次推送到 `main` 都會自動更新網站。
 
+部署流程只會發布遊戲必要的 HTML、CSS 與 JavaScript，不會把交接文件當成網站內容。設定方式可參考 [GitHub Pages 官方文件](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)。
+
 ## 主要檔案
 
 - `index.html`：版本、課次、遊戲與結算畫面。
