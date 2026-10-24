@@ -98,8 +98,9 @@ const versions = [
     grade: "四上翰林版",
     phase: "期末",
     label: "四上翰林版（期末）",
-    sourceNote: "尚未匯入教材，目前顯示既有測試題庫",
-    courses
+    sourceNote: "尚未匯入教材",
+    pending: true,
+    courses: []
   },
   {
     id: "g5-mid",
@@ -114,8 +115,9 @@ const versions = [
     grade: "五上翰林版",
     phase: "期末",
     label: "五上翰林版（期末）",
-    sourceNote: "尚未匯入教材，目前顯示既有測試題庫",
-    courses
+    sourceNote: "尚未匯入教材",
+    pending: true,
+    courses: []
   }
 ];
 
@@ -196,11 +198,11 @@ function init() {
   const courseId = params.has("course") ? Number(params.get("course")) : null;
   const legacyPage = params.has("page") ? Number(params.get("page")) : null;
   if (Number.isInteger(courseId)) {
-    const fallbackVersion = courseId >= 7 ? "g4-final" : versions[0].id;
+    const fallbackVersion = courseId >= 7 ? "g5-mid" : versions[0].id;
     selectVersion(versions.some((version) => version.id === versionId) ? versionId : fallbackVersion);
     startCourse(courseId, Number.isInteger(legacyPage) ? legacyPage - 1 : 0);
   } else if (Number.isInteger(legacyPage)) {
-    selectVersion(versions[0].id);
+    selectVersion("g5-mid");
     startCourse(7, legacyPage - 1);
   } else if (versions.some((version) => version.id === versionId)) {
     selectVersion(versionId);
@@ -220,7 +222,11 @@ function bindEvents() {
 
 function renderVersions() {
   els.versionGrid.innerHTML = versions
-    .map((version) => `<button class="version-card" type="button" data-version="${version.id}"><strong>${version.grade}</strong><span>${version.phase}</span></button>`)
+    .map((version) => {
+      const className = version.pending ? "version-card pending" : "version-card";
+      const phase = version.pending ? `${version.phase}・待匯入` : version.phase;
+      return `<button class="${className}" type="button" data-version="${version.id}"><strong>${version.grade}</strong><span>${phase}</span></button>`;
+    })
     .join("");
 
   els.versionGrid.querySelectorAll(".version-card").forEach((button) => {
@@ -230,6 +236,10 @@ function renderVersions() {
 
 function selectVersion(versionId) {
   const selected = versions.find((version) => version.id === versionId) || versions[0];
+  if (selected.pending) {
+    showToast(`${selected.label}題庫尚未匯入。`);
+    return;
+  }
   state.versionId = selected.id;
   els.selectedVersion.textContent = selected.label;
   els.sourceNote.textContent = selected.sourceNote;
