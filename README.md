@@ -18,9 +18,17 @@
 - 分數依版本與課次儲存在瀏覽器中，新成績覆蓋舊成績。
 - 完成後可輸出錯題 PDF；錯誤造詞會以紅字呈現。
 
+## 線上網址
+
+https://kuohappiness.github.io/glyph-meaning-game/
+
+手機、平板與其他電腦都可直接開啟。
+
 ## 本機預覽
 
-從上層「遊戲設計」資料夾執行：
+直接用瀏覽器開啟 `index.html` 即可。
+
+作者電腦上也可從上層「遊戲設計」資料夾執行（`server.js` 不在本 repo 中）：
 
 ```powershell
 node server.js

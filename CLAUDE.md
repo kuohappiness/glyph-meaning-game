@@ -87,46 +87,37 @@ story 必須由「一般文字、答案、一般文字、答案……一般文�
 
 本網站是純靜態 HTML、CSS、JavaScript，正式發布不需要 server.js、Node.js 或資料庫。所有網站資源均為相對路徑，可在 GitHub Pages 的 repo 子路徑運作。
 
-## GitHub 狀態與阻礙
+## GitHub 狀態
 
-2026-10-24 檢查結果：
+2026-10-24 更新：
 
-- GitHub CLI 已安裝。
-- CLI 記得帳號 kuohappiness。
-- 目前 GitHub 權杖失效，gh auth status 顯示需要重新登入。
-- 尚未建立遠端 repo，也尚未公開網站。
+- 公開 repo 已建立：https://github.com/kuohappiness/glyph-meaning-game
+- 本機兩次提交已推送到 `main`。
+- 網站網址（Pages 啟用後生效）：https://kuohappiness.github.io/glyph-meaning-game/
+- 第一次自動部署在「Configure Pages」步驟失敗，原因是 repo 尚未啟用 Pages，需到 Settings → Pages 將 Source 設為 GitHub Actions。
+- 本機 GitHub CLI 權杖仍失效，但 Git 推送可透過瀏覽器登入完成，不需要 gh。
 
-## Claude 接手後的執行步驟
+## 本機資料夾注意事項
 
-1. 在可見的 PowerShell 視窗重新登入：
+- 本機 `.git` 是由 Codex 沙盒帳號（CodexSandboxOffline）建立，Windows 使用者 lenovo 操作時會出現 `detected dubious ownership`。已用下列指令在全域設定加入例外：
 
-       gh auth login -h github.com -p https -w
+       git config --global --add safe.directory "%cd:\=/%"
 
-2. 登入成功後確認帳號：
+- 本機 repo 沒有設定 `origin`，推送時直接寫網址：
 
-       gh auth status
-       gh api user --jq .login
+       git push https://github.com/kuohappiness/glyph-meaning-game.git HEAD:main
 
-3. 進入專案並建立 Git：
+- 若有人從 GitHub 端（例如雲端 Claude）修改過程式，本機修改前要先拉回最新版本，避免覆蓋：
 
-       cd "D:\【Nancy】\系統預設資料夾\Documents\遊戲設計\glyph-meaning-game"
-       git init -b main
-       git add .
-       git commit -m "Publish glyph meaning game"
+       git pull https://github.com/kuohappiness/glyph-meaning-game.git main
 
-4. 建立公開 repo 並推送。預設 repo 名稱使用 glyph-meaning-game；如果同名已存在，先檢查該 repo，禁止直接覆蓋：
+## 後續發布步驟
 
-       gh repo view glyph-meaning-game
-       gh repo create glyph-meaning-game --public --source . --remote origin --push
+1. 到 GitHub repo 的 Settings → Pages，將 Source 設為 GitHub Actions（只需設定一次）。
 
-5. 到 GitHub repo 的 Settings → Pages，將 Source 設為 GitHub Actions。
+2. 到 repo 的 Actions 分頁，選「Deploy static site to GitHub Pages」→「Run workflow」重新部署；之後每次推送到 `main` 都會自動部署。
 
-6. 查看部署狀態：
-
-       gh run list --workflow pages.yml
-       gh run watch
-
-7. 部署完成後取得並實際開啟 Pages 網址，確認：
+3. 部署完成後實際開啟 Pages 網址，確認：
 
 - 首頁顯示四個版本。
 - 四上期中顯示第一課至第六課。
@@ -134,7 +125,7 @@ story 必須由「一般文字、答案、一般文字、答案……一般文�
 - 手機寬度沒有橫向溢出。
 - 整課完成後分數與 PDF 按鈕正常。
 
-8. 把最終 repo URL 與 GitHub Pages URL 回報給使用者。
+4. 把最終 repo URL 與 GitHub Pages URL 回報給使用者。
 
 ## 發布安全注意
 
